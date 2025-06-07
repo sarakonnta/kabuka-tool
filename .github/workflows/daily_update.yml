@@ -1,1 +1,46 @@
+name: Daily Data Update
 
+on:
+  # このファイルを保存した時に、すぐに1回実行するための設定
+  push:
+    paths:
+      - '.github/workflows/daily_update.yml'
+
+  # 手動で実行するための設定
+  workflow_dispatch:
+
+  # 決まった時間に実行するための設定
+  schedule:
+    # 日本時間の夜8時に実行 (UTCの11時)
+    - cron: '0 11 * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run data processing script
+        run: |
+          python data_processor.py
+
+      - name: Commit results
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add japan_stocks_indicators.csv
+          # 変更があった場合のみコミット
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update daily stock data" && git push)
